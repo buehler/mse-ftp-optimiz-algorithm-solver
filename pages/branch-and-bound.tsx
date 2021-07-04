@@ -11,6 +11,11 @@ enum NodeReason {
   infeasible = 'infeasible',
 }
 
+enum DpsStrategy {
+  onesFirst,
+  zeroesFirst,
+}
+
 type TreeNode = {
   name: string;
   attributes: { [name: string]: string };
@@ -42,15 +47,24 @@ class Node {
     public readonly zeroChild?: Node
   ) {}
 
-  public toTree(): TreeNode {
+  public toTree(strategy: DpsStrategy): TreeNode {
     const children = [] as TreeNode[];
     const currentStep = treeSteps++;
 
-    if (this.oneChild) {
-      children.unshift(this.oneChild.toTree());
-    }
-    if (this.zeroChild) {
-      children.unshift(this.zeroChild.toTree());
+    if (strategy === DpsStrategy.onesFirst) {
+      if (this.oneChild) {
+        children.unshift(this.oneChild.toTree(strategy));
+      }
+      if (this.zeroChild) {
+        children.unshift(this.zeroChild.toTree(strategy));
+      }
+    } else {
+      if (this.zeroChild) {
+        children.unshift(this.zeroChild.toTree(strategy));
+      }
+      if (this.oneChild) {
+        children.unshift(this.oneChild.toTree(strategy));
+      }
     }
 
     return {
@@ -75,15 +89,16 @@ class Node {
 
 const getCharacter = (number: number) => String.fromCharCode(65 + number);
 
-function calculate(capacity: number, items: Item[]) {
+function calculate(strategy: DpsStrategy, capacity: number, items: Item[]) {
   const orderedItems = items.sort((left, right) => right.ratio - left.ratio);
   const globalMaxima = [0];
-  const result = calculateBranchAndBound(orderedItems, capacity, globalMaxima, [], []);
+  const result = calculateBranchAndBound(strategy, orderedItems, capacity, globalMaxima, [], []);
 
   return { result, globalMaxima, orderedItems };
 }
 
 function calculateBranchAndBound(
+  strategy: DpsStrategy,
   orderedItems: Item[],
   capacity: number,
   globalMaxima: number[],
@@ -147,17 +162,57 @@ function calculateBranchAndBound(
     return new Node(upperStringBound, lowerBound, upperValue, lowerValue, fixedZeroes, fixedOnes, NodeReason.optimal);
   }
 
-  return new Node(
-    upperStringBound,
-    lowerBound,
-    upperValue,
-    lowerValue,
-    fixedZeroes,
-    fixedOnes,
-    globalUpdate ? NodeReason.globalUpdate : NodeReason.none,
-    calculateBranchAndBound(orderedItems, capacity, globalMaxima, fixedZeroes, [...fixedOnes, mismatchingIndex]),
-    calculateBranchAndBound(orderedItems, capacity, globalMaxima, [...fixedZeroes, mismatchingIndex], fixedOnes)
-  );
+  if (strategy === DpsStrategy.onesFirst) {
+    const one = calculateBranchAndBound(strategy, orderedItems, capacity, globalMaxima, fixedZeroes, [
+      ...fixedOnes,
+      mismatchingIndex,
+    ]);
+    const zero = calculateBranchAndBound(
+      strategy,
+      orderedItems,
+      capacity,
+      globalMaxima,
+      [...fixedZeroes, mismatchingIndex],
+      fixedOnes
+    );
+
+    return new Node(
+      upperStringBound,
+      lowerBound,
+      upperValue,
+      lowerValue,
+      fixedZeroes,
+      fixedOnes,
+      globalUpdate ? NodeReason.globalUpdate : NodeReason.none,
+      one,
+      zero
+    );
+  } else {
+    const zero = calculateBranchAndBound(
+      strategy,
+      orderedItems,
+      capacity,
+      globalMaxima,
+      [...fixedZeroes, mismatchingIndex],
+      fixedOnes
+    );
+    const one = calculateBranchAndBound(strategy, orderedItems, capacity, globalMaxima, fixedZeroes, [
+      ...fixedOnes,
+      mismatchingIndex,
+    ]);
+
+    return new Node(
+      upperStringBound,
+      lowerBound,
+      upperValue,
+      lowerValue,
+      fixedZeroes,
+      fixedOnes,
+      globalUpdate ? NodeReason.globalUpdate : NodeReason.none,
+      one,
+      zero
+    );
+  }
 }
 
 function WeightField({ item }: { item: Item }) {
@@ -194,7 +249,13 @@ function ValueField({ item }: { item: Item }) {
   );
 }
 
-function Result({ result: { globalMaxima, orderedItems, result } }: { result: CalculationResult }) {
+function Result({
+  strategy,
+  result: { globalMaxima, orderedItems, result },
+}: {
+  strategy: DpsStrategy;
+  result: CalculationResult;
+}) {
   treeSteps = 1;
 
   return (
@@ -241,7 +302,7 @@ function Result({ result: { globalMaxima, orderedItems, result } }: { result: Ca
       </h5>
       <h5 className="text-lg text-center mb-8">Decision Tree</h5>
       <div className="w-full h-96 rounded shadow-xl border border-gray-500" id="decision-tree">
-        <Tree data={result.toTree()} orientation="vertical" nodeSize={{ x: 400, y: 200 }} />
+        <Tree data={result.toTree(strategy)} orientation="vertical" nodeSize={{ x: 400, y: 200 }} />
       </div>
     </div>
   );
@@ -256,6 +317,7 @@ export default function BranchAndBound() {
   ]);
   const [capacity, setCapacity] = useState(20);
   const [result, setResult] = useState<null | CalculationResult>(null);
+  const [strategy, setStrategy] = useState(DpsStrategy.onesFirst);
 
   return (
     <div>
@@ -271,7 +333,7 @@ export default function BranchAndBound() {
           </Link>
         </div>
         <div className="text-center mb-12">
-          <div className="flex flex-row justify-center align-middle items-center">
+          <div className="flex flex-row justify-center align-middle items-center mb-8">
             <label className="inline-block">Capacity:</label>
             <input
               className="w-24 text-center px-4 py-2 border inline-block mx-4 border-gray-600"
@@ -292,6 +354,32 @@ export default function BranchAndBound() {
             >
               remove last item
             </button>
+          </div>
+          <div>
+            <ul>
+              <li>
+                <input
+                  type="radio"
+                  id="ones_first"
+                  name="dps_strat"
+                  value="1"
+                  checked={strategy === DpsStrategy.onesFirst}
+                  onChange={() => setStrategy(DpsStrategy.onesFirst)}
+                />{' '}
+                <label htmlFor="ones_first">explore ones first</label>
+              </li>
+              <li>
+                <input
+                  type="radio"
+                  id="zeroes_first"
+                  name="dps_strat"
+                  value="0"
+                  checked={strategy === DpsStrategy.zeroesFirst}
+                  onChange={() => setStrategy(DpsStrategy.zeroesFirst)}
+                />{' '}
+                <label htmlFor="zeroes_first">explore zeroes first</label>
+              </li>
+            </ul>
           </div>
         </div>
         <div className="mb-16">
@@ -327,13 +415,13 @@ export default function BranchAndBound() {
           <button
             className="inline-block mx-4 px-2 py-1 rounded bg-pink-300 hover:bg-pink-700 hover:text-white transition-colors duration-150"
             onClick={() => {
-              setResult(calculate(capacity, items));
+              setResult(calculate(strategy, capacity, items));
             }}
           >
             calculate result.
           </button>
         </div>
-        {result ? <Result result={result} /> : null}
+        {result ? <Result result={result} strategy={strategy} /> : null}
       </main>
     </div>
   );
