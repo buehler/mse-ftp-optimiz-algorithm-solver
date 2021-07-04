@@ -16,6 +16,12 @@ export default function Home() {
               <a className="underline text-center text-blue-500">B&amp;B Solver</a>
             </Link>
           </li>
+          <li>
+            <span>Two dimensional simplex algorithm: </span>
+            <Link href="/two-dim-simplex">
+              <a className="underline text-center text-blue-500">2d Simplex</a>
+            </Link>
+          </li>
         </ul>
       </main>
     </div>
