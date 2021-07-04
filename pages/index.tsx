@@ -8,12 +8,12 @@ export default function Home() {
         <title>Optimization Algorithm Solver</title>
       </Head>
 
-      <main>
+      <main className="container mx-auto my-12">
         <ul>
           <li>
-            <span>Knapsack Branch And Bound:</span>
+            <span>Knapsack Branch And Bound: </span>
             <Link href="/branch-and-bound">
-              <a>B&amp;B Solver</a>
+              <a className="underline text-center text-blue-500">B&amp;B Solver</a>
             </Link>
           </li>
         </ul>
