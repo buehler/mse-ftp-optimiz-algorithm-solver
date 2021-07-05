@@ -22,6 +22,12 @@ export default function Home() {
               <a className="underline text-center text-blue-500">2d Simplex</a>
             </Link>
           </li>
+          <li>
+            <span>Spanning Tree (Prim / Kruskal): </span>
+            <Link href="/spanning-tree">
+              <a className="underline text-center text-blue-500">SPTree</a>
+            </Link>
+          </li>
         </ul>
       </main>
     </div>
