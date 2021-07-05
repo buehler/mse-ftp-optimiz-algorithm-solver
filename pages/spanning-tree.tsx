@@ -20,6 +20,12 @@ type GraphData = {
   links: Edge[];
 };
 
+type DjisktraData = {
+  startNode: string;
+  distances: { [id: string]: number };
+  graphData: GraphData;
+};
+
 class UnionFind {
   private count: number;
   private parent: { [id: string]: string } = {};
@@ -73,6 +79,7 @@ class UnionFind {
 
 const graphConfig = {
   initialZoom: 2,
+  height: 600,
   link: {
     renderLabel: true,
     color: '#90b4ce',
@@ -208,8 +215,6 @@ function calculateKruskalsAlgorithm({ nodes, links }: GraphData): GraphData {
     }
   }
 
-  console.log(newLinks);
-
   return {
     nodes: kruskalNodes,
     links: [
@@ -225,6 +230,81 @@ function calculateKruskalsAlgorithm({ nodes, links }: GraphData): GraphData {
   };
 }
 
+function calculateDjikstra(startNode: string, { nodes, links }: GraphData): DjisktraData {
+  const djikstraNodes = nodes.map((n) => ({ id: `djisktra_${n.id}` }));
+  const djisktraLinks = links.map((l) => ({ ...l, source: `djisktra_${l.source}`, target: `djisktra_${l.target}` }));
+
+  if (djisktraLinks.length <= 0) {
+    console.warn('No edges, aborting djisktra');
+    return {
+      distances: {},
+      startNode: `djisktra_${startNode}`,
+      graphData: {
+        nodes: djikstraNodes,
+        links: [],
+      },
+    };
+  }
+
+  const distances = {} as { [id: string]: number };
+  const previousNodes = {} as { [id: string]: string | null };
+  const queue = [] as [string, number][];
+
+  distances[`djisktra_${startNode}`] = 0;
+  queue.push([`djisktra_${startNode}`, 0]);
+
+  for (const node of djikstraNodes) {
+    if (node.id !== `djisktra_${startNode}`) {
+      distances[node.id] = Infinity;
+    }
+    previousNodes[node.id] = null;
+  }
+
+  while (queue.length > 0) {
+    const [node] = queue.sort(([_, left], [__, right]) => left - right).shift()!;
+
+    for (const edge of djisktraLinks.filter((l) => l.target === node || l.source === node)) {
+      const neighbor = edge.source === node ? edge.target : edge.source;
+      const edgeWeight = parseInt(edge.label, 10);
+      const newDistance = distances[node] + edgeWeight;
+
+      if (newDistance < distances[neighbor]) {
+        distances[neighbor] = newDistance;
+        previousNodes[neighbor] = node;
+        queue.push([neighbor, newDistance]);
+      }
+    }
+  }
+
+  const newLinks = [] as Edge[];
+  for (const [node, prev] of Object.entries(previousNodes).filter(([node]) => node !== `djisktra_${startNode}`)) {
+    const edge = djisktraLinks.find(
+      ({ source, target }) => (source === node && target === prev) || (source === prev && target === node)
+    )!;
+    newLinks.push(edge);
+  }
+
+  return {
+    startNode: `djisktra_${startNode}`,
+    distances,
+    graphData: {
+      nodes: djikstraNodes,
+      links: [
+        ...newLinks.map((link) => ({
+          ...link,
+          color: '#ef4565',
+        })),
+        ...djisktraLinks
+          .filter((l) => !newLinks.includes(l))
+          .map((link) => ({
+            ...link,
+            opacity: 0.4,
+          })),
+      ],
+    },
+  };
+}
+
 export default function SpanningTreeSolver() {
   const [adjacencyMatrix, setAdjacencyMatrix] = useState<number[][]>(math.zeros(4, 4).toArray());
   const [startNode, setStartNode] = useState<string>('A');
@@ -232,6 +312,7 @@ export default function SpanningTreeSolver() {
   const graphData = createGraphData(adjacencyMatrix);
   const primGraphData = calculatePrimsAlgorithm(startNode, graphData);
   const kruskalsGraphData = calculateKruskalsAlgorithm(graphData);
+  const djisktraData = calculateDjikstra(startNode, graphData);
 
   return (
     <div>
@@ -323,7 +404,7 @@ export default function SpanningTreeSolver() {
         </div>
         <div className="text-center mb-12">
           <h5>Graph</h5>
-          <div className="border border-gray-400 text-center">
+          <div className="border border-gray-400 mx-auto" style={{ width: '800px' }}>
             <Graph id="undirected_graph" data={graphData} config={graphConfig} />
           </div>
         </div>
@@ -346,7 +427,7 @@ export default function SpanningTreeSolver() {
               </div>
             ))}
           </div>
-          <div className="border border-gray-400 text-center">
+          <div className="border border-gray-400 mx-auto" style={{ width: '800px' }}>
             <Graph id="prims_graph" data={primGraphData} config={graphConfig} />
           </div>
           <div className="text-center">
@@ -361,7 +442,7 @@ export default function SpanningTreeSolver() {
         </div>
         <div className="text-center mb-12">
           <h5>Kruskal&apos;s Algorithm</h5>
-          <div className="border border-gray-400 text-center">
+          <div className="border border-gray-400 mx-auto" style={{ width: '800px' }}>
             <Graph id="kruskal_graph" data={kruskalsGraphData} config={graphConfig} />
           </div>
           <div className="text-center">
@@ -373,6 +454,64 @@ export default function SpanningTreeSolver() {
                 .join(', ')}
             </span>
           </div>
+        </div>
+        <div className="text-center mb-12">
+          <h5>Djisktra&apos;s Algorithm</h5>
+          <div className="flex items-center justify-center align-middle">
+            {adjacencyMatrix[0].map((_, i) => (
+              <div className="m-2" key={`djisktras_algo_select_start_${i}`}>
+                <input
+                  type="radio"
+                  name="djisktra_start_node"
+                  id={`djisktra_start_node_${i}`}
+                  value={getCharacter(i)}
+                  checked={startNode === getCharacter(i)}
+                  onChange={() => setStartNode(getCharacter(i))}
+                />
+                <label htmlFor={`djisktra_start_node_${i}`} className="pl-2 cursor-pointer">
+                  {getCharacter(i)}
+                </label>
+              </div>
+            ))}
+          </div>
+          <div className="border border-gray-400 mx-auto" style={{ width: '800px' }}>
+            <Graph id="djisktras_graph" data={djisktraData.graphData} config={graphConfig} />
+          </div>
+          <div className="text-center mb-8">
+            <span>
+              Edge Selection Order:{' '}
+              {djisktraData.graphData.links
+                .filter((l) => l.color)
+                .map((l) => `${l.source.replace('djisktra_', '')}-${l.target.replace('djisktra_', '')}`)
+                .join(', ')}
+            </span>
+          </div>
+          <table className="mx-auto">
+            <thead>
+              <tr>
+                <th colSpan={djisktraData.graphData.nodes.length + 1}>Distances</th>
+              </tr>
+              <tr>
+                <th></th>
+                {djisktraData.graphData.nodes.map(({ id }) => (
+                  <th key={`djisktra_graph_distance_node_${id}`}>{id.replace('djisktra_', '')}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>{djisktraData.startNode.replace('djisktra_', '')}</th>
+                {Object.entries(djisktraData.distances)
+                  .map<[string, number]>(([node, dist]) => [node.replace('djisktra_', ''), dist])
+                  .sort(([left], [right]) => left.localeCompare(right))
+                  .map(([_, dist], i) => (
+                    <td className="p-2" key={`djisktra_graph_distance_value_node_${i}`}>
+                      {dist}
+                    </td>
+                  ))}
+              </tr>
+            </tbody>
+          </table>
         </div>
       </main>
     </div>
