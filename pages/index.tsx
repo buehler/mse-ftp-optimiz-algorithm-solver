@@ -23,9 +23,15 @@ export default function Home() {
             </Link>
           </li>
           <li>
-            <span>Spanning Tree (Prim / Kruskal): </span>
+            <span>Spanning Tree (Prim / Kruskal / Djikstra): </span>
             <Link href="/spanning-tree">
-              <a className="underline text-center text-blue-500">SPTree</a>
+              <a className="underline text-center text-blue-500">MST / Graphs</a>
+            </Link>
+          </li>
+          <li>
+            <span>Floyd-Warshall (undirected / directed): </span>
+            <Link href="/floyd-warshall">
+              <a className="underline text-center text-blue-500">floyd warshall</a>
             </Link>
           </li>
         </ul>
