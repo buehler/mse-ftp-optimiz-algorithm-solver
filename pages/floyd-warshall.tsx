@@ -339,7 +339,7 @@ export default function SpanningTreeSolver() {
                         <th>{getCharacter(rowIndex)}</th>
                         {row.map((value, colIndex) => (
                           <td className="p-2 min-w-min" key={`result_body_col_${colIndex}`}>
-                            {value}
+                            {rowIndex === colIndex ? '-' : directedGraph || colIndex > rowIndex ? value : '-'}
                           </td>
                         ))}
                       </tr>
