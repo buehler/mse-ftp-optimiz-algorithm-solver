@@ -1,7 +1,8 @@
+import 'jsxgraph';
 import { index, inv, matrix, Matrix, multiply, size, subset } from 'mathjs';
 import Head from 'next/head';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 enum MinMax {
   min,
@@ -354,10 +355,48 @@ function ResultPresentation({ result }: { result: Iteration[] }) {
   );
 }
 
+let board: JXG.Board;
+const boardObjects = [] as JXG.GeometryElement[];
+
 export default function TwoDimensionalSimplexAlgorithm() {
   const [problem, setProblem] = useState(startProblem);
-  const [startSelection, setStartSelection] = useState<Selection>([1, 5]);
+  const [startSelection, setStartSelection] = useState<Selection>([1, 2]);
   const [result, setResult] = useState<Iteration[] | null>(null);
+
+  useEffect(() => {
+    board ??= window.JXG.JSXGraph.initBoard('inequality_graph', {
+      axis: true,
+      boundingbox: [-5, 5, 5, -5],
+      drag: { enabled: true },
+    });
+
+    const ineqs = problem.inequalities.map(createInequalityForm);
+    for (let x = 0; x < ineqs.length; x++) {
+      const { x1, x2, result } = ineqs[x];
+      const line = board.create('line' as any, [-result, x2, x1], {
+        fixed: true,
+        withLabel: true,
+        label: { autoPosition: true },
+        name: `(${x + 1}) ${x1 !== 0 ? x1 + 'x' : ''} + ${x2 !== 0 ? x2 + 'y' : ''} &leq; ${result}`,
+      });
+      const ineq = board.create('inequality' as any, [line], { inverse: true });
+      boardObjects.push(line, ineq);
+    }
+
+    const { x1, x2 } = createMaxTargetFunction(problem);
+    boardObjects.push(
+      board.create('line', [0, x2, x1], {
+        withLabel: true,
+        color: 'green',
+        name: `max ${x1 !== 0 ? x1 + 'x' : ''} + ${x2 !== 0 ? x2 + 'y' : ''}`,
+      })
+    );
+
+    return function cleanup() {
+      board.removeObject(boardObjects, false);
+      boardObjects.length = 0;
+    };
+  }, [problem]);
 
   return (
     <div>
@@ -541,33 +580,13 @@ export default function TwoDimensionalSimplexAlgorithm() {
               c = ({createMaxTargetFunction(problem).x1}, {createMaxTargetFunction(problem).x2})
             </div>
           </div>
-          <div>
-            <h6 className="text-center my-4">Graph</h6>
-            <div>
-              <iframe
-                height="500"
-                className="w-full"
-                src={`https://www.wolframalpha.com/input/?i=${encodeURIComponent(
-                  problem.inequalities
-                    .map(createInequalityForm)
-                    .map(({ x1, x2, result }) => `(${x1}x)+(${x2}y)<=${result}`)
-                    .join(',')
-                )}`}
-              ></iframe>
-            </div>
-          </div>
-          <div className="mb-12">
-            <h6 className="text-center my-4">Function Graphs</h6>
-            <div>
-              {problem.inequalities.map(createInequalityForm).map(({ x1, x2, result }, index) => (
-                <iframe
-                  key={`func_graph_solo_${index}`}
-                  height="500"
-                  className="w-1/3 inline-block"
-                  src={`https://www.wolframalpha.com/input/?i=${encodeURIComponent(`(${x1}x)+(${x2}y)<=${result}`)}`}
-                ></iframe>
-              ))}
-            </div>
+          <div className="my-12">
+            <h6>Graph</h6>
+            <div
+              className="mx-auto border border-gray-900"
+              id="inequality_graph"
+              style={{ width: '800px', height: '600px' }}
+            ></div>
           </div>
         </div>
         <div className="text-center mb-12">

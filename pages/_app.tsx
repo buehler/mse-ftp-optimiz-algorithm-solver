@@ -1,3 +1,4 @@
+import 'jsxgraph/distrib/jsxgraph.css';
 import type { AppProps } from 'next/app';
 import 'tailwindcss/tailwind.css';
 
