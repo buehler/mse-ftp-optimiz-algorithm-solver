@@ -13,19 +13,73 @@ type Edge = {
   source: string;
   target: string;
   label: string;
-} & { [prop: string]: string };
+} & { [prop: string]: any };
 
 type GraphData = {
   nodes: Vertex[];
   links: Edge[];
 };
 
+class UnionFind {
+  private count: number;
+  private parent: { [id: string]: string } = {};
+
+  constructor(nodes: string[]) {
+    // Number of disconnected components
+    this.count = nodes.length;
+
+    // Initialize the data structure such that all
+    // elements have themselves as parents
+    nodes.forEach((e) => (this.parent[e] = e));
+  }
+
+  union(a: string, b: string) {
+    let rootA = this.find(a);
+    let rootB = this.find(b);
+
+    // Roots are same so these are already connected.
+    if (rootA === rootB) {
+      return;
+    }
+
+    // Always make the element with smaller root the parent.
+    if (rootA < rootB) {
+      if (this.parent[b] != b) {
+        this.union(this.parent[b], a);
+      }
+      this.parent[b] = this.parent[a];
+    } else {
+      if (this.parent[a] != a) {
+        this.union(this.parent[a], b);
+      }
+      this.parent[a] = this.parent[b];
+    }
+  }
+
+  // Returns final parent of a node
+  find(a: string) {
+    while (this.parent[a] !== a) {
+      a = this.parent[a];
+    }
+
+    return a;
+  }
+
+  // Checks connectivity of the 2 nodes
+  connected(a: string, b: string) {
+    return this.find(a) === this.find(b);
+  }
+}
+
 const graphConfig = {
   initialZoom: 2,
   link: {
     renderLabel: true,
+    color: '#90b4ce',
   },
-  //   width: '100%',
+  node: {
+    color: '#3da9fc',
+  },
 };
 
 const demoAdjacency: number[][] = [
@@ -112,9 +166,61 @@ function calculatePrimsAlgorithm(startNode: string, { nodes, links }: GraphData)
     links: [
       ...newLinks.map((link) => ({
         ...link,
-        color: 'green',
+        color: '#ef4565',
       })),
-      ...primLinks.filter((l) => !newLinks.includes(l)),
+      ...primLinks
+        .filter((l) => !newLinks.includes(l))
+        .map((link) => ({
+          ...link,
+          opacity: 0.4,
+        })),
+    ],
+  };
+}
+
+function calculateKruskalsAlgorithm({ nodes, links }: GraphData): GraphData {
+  const kruskalNodes = nodes.map((n) => ({ id: `kruskal_${n.id}` }));
+  const kruskalLinks = links
+    .map((l) => ({ ...l, source: `kruskal_${l.source}`, target: `kruskal_${l.target}` }))
+    .sort((left, right) => parseInt(left.label, 10) - parseInt(right.label, 10));
+
+  const newLinks = [] as Edge[];
+  const oldLinks = [] as Edge[];
+
+  const unionFind = new UnionFind(kruskalNodes.map((n) => n.id));
+
+  while (kruskalLinks.length > 0) {
+    const cheapestLink = kruskalLinks.shift();
+
+    if (!cheapestLink) {
+      console.warn('no link found');
+      return {
+        nodes: kruskalNodes,
+        links: kruskalLinks,
+      };
+    }
+
+    if (unionFind.connected(cheapestLink.source, cheapestLink.target)) {
+      oldLinks.push(cheapestLink);
+    } else {
+      unionFind.union(cheapestLink.source, cheapestLink.target);
+      newLinks.push(cheapestLink);
+    }
+  }
+
+  console.log(newLinks);
+
+  return {
+    nodes: kruskalNodes,
+    links: [
+      ...newLinks.map((link) => ({
+        ...link,
+        color: '#ef4565',
+      })),
+      ...oldLinks.map((link) => ({
+        ...link,
+        opacity: 0.4,
+      })),
     ],
   };
 }
@@ -125,6 +231,7 @@ export default function SpanningTreeSolver() {
 
   const graphData = createGraphData(adjacencyMatrix);
   const primGraphData = calculatePrimsAlgorithm(startNode, graphData);
+  const kruskalsGraphData = calculateKruskalsAlgorithm(graphData);
 
   return (
     <div>
@@ -248,6 +355,21 @@ export default function SpanningTreeSolver() {
               {primGraphData.links
                 .filter((l) => l.color)
                 .map((l) => `${l.source.replace('prim_', '')}-${l.target.replace('prim_', '')}`)
+                .join(', ')}
+            </span>
+          </div>
+        </div>
+        <div className="text-center mb-12">
+          <h5>Kruskal&apos;s Algorithm</h5>
+          <div className="border border-gray-400 text-center">
+            <Graph id="kruskal_graph" data={kruskalsGraphData} config={graphConfig} />
+          </div>
+          <div className="text-center">
+            <span>
+              Edge Selection Order:{' '}
+              {kruskalsGraphData.links
+                .filter((l) => l.color)
+                .map((l) => `${l.source.replace('kruskal_', '')}-${l.target.replace('kruskal_', '')}`)
                 .join(', ')}
             </span>
           </div>
