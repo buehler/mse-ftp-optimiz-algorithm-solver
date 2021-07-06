@@ -376,7 +376,11 @@ export default function TwoDimensionalSimplexAlgorithm() {
     const ineqs = problem.inequalities.map(createInequalityForm);
     for (let x = 0; x < ineqs.length; x++) {
       const { x1, x2, result } = ineqs[x];
-      const line = board.create('line' as any, [-result, x2, x1], {
+
+      // x + 2y <= 0
+      // Ax + By + C = 0
+
+      const line = board.create('line' as any, [-result, x1, x2], {
         fixed: true,
         withLabel: true,
         label: { autoPosition: true },
@@ -400,7 +404,7 @@ export default function TwoDimensionalSimplexAlgorithm() {
 
     // calculate level function for point 1,1
 
-    const slope = x2 / x1;
+    const slope = x2 / x1; // 1/2
     const perpendicularSlope = nerdamer(`${slope}*x=-1`).solveFor('x').toString();
     const yIntercept = nerdamer(`0=${perpendicularSlope}*0+b`).solveFor('b').toString();
     console.log(perpendicularSlope, yIntercept);
@@ -410,7 +414,7 @@ export default function TwoDimensionalSimplexAlgorithm() {
       p0,
       pC,
       cFunc
-      // board.create('line', [0, -1, parseFloat(perpendicularSlope)], {
+      // board.create('line', [parseFloat(yIntercept), 1, -parseFloat(perpendicularSlope)], {
       //   withLabel: true,
       //   color: 'green',
       //   // name: `max ${x1 !== 0 ? x1 + 'x' : ''} + ${x2 !== 0 ? x2 + 'y' : ''}`,
