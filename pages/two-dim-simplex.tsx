@@ -4,6 +4,9 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+const katex = require('katex');
+const nerdamer = require('nerdamer/all');
+
 enum MinMax {
   min,
   max,
@@ -381,15 +384,37 @@ export default function TwoDimensionalSimplexAlgorithm() {
       });
       const ineq = board.create('inequality' as any, [line], { inverse: true });
       boardObjects.push(line, ineq);
+
+      // console.log(`${x1}x+(${x2})y <= ${result}`, nerdamer.convertToLaTeX(`(${x1})x+(${x2})y<=${result}`));
     }
 
     const { x1, x2 } = createMaxTargetFunction(problem);
+
+    const p0 = board.create('point', [0, 0], { withLabel: false, fixed: true });
+    const pC = board.create('point', [x1, x2], { withLabel: false, fixed: true });
+    const cFunc = board.create('arrow', [p0, pC], {
+      color: 'green',
+      withLabel: true,
+      name: `c (${x1},${x2})`,
+    });
+
+    // calculate level function for point 1,1
+
+    const slope = x2 / x1;
+    const perpendicularSlope = nerdamer(`${slope}*x=-1`).solveFor('x').toString();
+    const yIntercept = nerdamer(`0=${perpendicularSlope}*0+b`).solveFor('b').toString();
+    console.log(perpendicularSlope, yIntercept);
+    // y = -2x + 0 --> 0 = -2x - y + 0
+
     boardObjects.push(
-      board.create('line', [0, x2, x1], {
-        withLabel: true,
-        color: 'green',
-        name: `max ${x1 !== 0 ? x1 + 'x' : ''} + ${x2 !== 0 ? x2 + 'y' : ''}`,
-      })
+      p0,
+      pC,
+      cFunc
+      // board.create('line', [0, -1, parseFloat(perpendicularSlope)], {
+      //   withLabel: true,
+      //   color: 'green',
+      //   // name: `max ${x1 !== 0 ? x1 + 'x' : ''} + ${x2 !== 0 ? x2 + 'y' : ''}`,
+      // })
     );
 
     return function cleanup() {
