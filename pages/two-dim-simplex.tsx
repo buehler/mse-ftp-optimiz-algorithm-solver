@@ -388,8 +388,6 @@ export default function TwoDimensionalSimplexAlgorithm() {
       });
       const ineq = board.create('inequality' as any, [line], { inverse: true });
       boardObjects.push(line, ineq);
-
-      // console.log(`${x1}x+(${x2})y <= ${result}`, nerdamer.convertToLaTeX(`(${x1})x+(${x2})y<=${result}`));
     }
 
     const { x1, x2 } = createMaxTargetFunction(problem);
@@ -405,9 +403,11 @@ export default function TwoDimensionalSimplexAlgorithm() {
     // calculate level function for point 1,1
 
     const slope = x2 / x1; // 1/2
-    const perpendicularSlope = nerdamer(`${slope}*x=-1`).solveFor('x').toString();
-    const yIntercept = nerdamer(`0=${perpendicularSlope}*0+b`).solveFor('b').toString();
-    console.log(perpendicularSlope, yIntercept);
+    // console.log(nerdamer(nerdamer(`dot([${x1},${x2}],[x,y])=0`).solveFor('y')).evaluate({ x: x1 }));
+    // console.log(nerdamer(nerdamer(`dot([${x1},${x2}],[x,y])=0`).solveFor('y')).evaluate({ x: 0 }));
+    // const perpendicularSlope = nerdamer(`${slope}*x=-1`).solveFor('x').toString();
+    // const yIntercept = nerdamer(`0=${perpendicularSlope}*0+b`).solveFor('b').toString();
+    // console.log(perpendicularSlope, yIntercept);
     // y = -2x + 0 --> 0 = -2x - y + 0
 
     boardObjects.push(
@@ -536,33 +536,24 @@ export default function TwoDimensionalSimplexAlgorithm() {
               ))}
             </div>
             <div>
-              <div className="flex align-middle items-center justify-center ml-16">
-                <div className="text-green-500 mr-2">max</div>
-                <div>
-                  ({createMaxTargetFunction(problem).x1})
-                  <label>
-                    x<sub>1</sub>
-                  </label>
-                </div>
-                <div>+</div>
-                <div>
-                  ({createMaxTargetFunction(problem).x2})
-                  <label>
-                    x<sub>2</sub>
-                  </label>
-                </div>
-              </div>
+              <div
+                className="flex align-middle items-center justify-center ml-16"
+                dangerouslySetInnerHTML={{
+                  __html: katex.renderToString(
+                    nerdamer.convertToLaTeX(
+                      `maximize: (${createMaxTargetFunction(problem).x1})x_1 + (${createMaxTargetFunction(problem).x2})x_2`
+                    )
+                  ),
+                }}
+              ></div>
               {problem.inequalities.map(createInequalityForm).map(({ x1, x2, result }, index) => (
                 <div key={`indeq_trans_form_${index}`} className="flex align-middle items-center justify-center ml-16">
-                  <span className="inline-block mr-4">(eq. {index + 1})</span>({x1})
-                  <label>
-                    x<sub>1</sub>
-                  </label>
-                  + ({x2})
-                  <label>
-                    x<sub>2</sub>
-                  </label>
-                  &nbsp; &#8804; {result}
+                  <span className="inline-block mr-4">(eq. {index + 1})</span>
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: katex.renderToString(nerdamer.convertToLaTeX(`(${x1})x_1+(${x2})x_2<=${result}`)),
+                    }}
+                  ></span>
                 </div>
               ))}
             </div>
